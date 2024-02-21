@@ -1,0 +1,144 @@
+// package kanban
+
+// import (
+// 	"context"
+// 	"fmt"
+
+// 	"github.com/google/uuid"
+// 	"github.com/jackc/pgx/v5"
+// 	"github.com/jackc/pgx/v5/pgxpool"
+// )
+
+// type Card struct {
+// 	ID      uuid.UUID `db:"id"`
+// 	Title   string    `db:"title"`
+// 	Content string    `db:"content"`
+// }
+
+// type CardPatch struct {
+// 	Title   *string
+// 	Content *string
+// }
+
+// func NewCard() (*Card, error) {
+// 	id, err := uuid.NewV7()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to generate new ID: %w", err)
+// 	}
+
+// 	return &Card{
+// 		ID:      id,
+// 		Title:   "",
+// 		Content: "",
+// 	}, nil
+// }
+
+// type Repository interface {
+// 	AllCards(ctx context.Context) ([]*Card, error)
+// 	Card(ctx context.Context, id uuid.UUID) (*Card, error)
+// 	CreateCard(ctx context.Context) error
+// 	DeleteCard(ctx context.Context, id uuid.UUID) error
+// 	PatchCard(ctx context.Context, id uuid.UUID, i *CardPatch) error
+// }
+
+// type pgxRepository struct {
+// 	p *pgxpool.Pool
+// }
+
+// func NewPgxRepository(p *pgxpool.Pool) *pgxRepository {
+// 	return &pgxRepository{
+// 		p: p,
+// 	}
+// }
+
+// func (r *pgxRepository) AllCards(ctx context.Context) ([]*Card, error) {
+// 	query := `
+// 	SELECT id, title, content
+// 	FROM cards
+// 	`
+// 	rows, _ := r.p.Query(ctx, query)
+// 	result, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[Card])
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to collect rows: %w", err)
+// 	}
+
+// 	return result, nil
+// }
+
+// func (r *pgxRepository) Card(ctx context.Context, id uuid.UUID) (*Card, error) {
+// 	query := `
+// 	SELECT id, title, content
+// 	FROM cards
+// 	WHERE id = @id
+// 	`
+// 	args := pgx.NamedArgs{
+// 		"id": id,
+// 	}
+// 	rows, _ := r.p.Query(ctx, query, args)
+// 	result, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByNameLax[Card])
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to collect rows: %w", err)
+// 	}
+
+// 	return result, nil
+// }
+
+// func (r *pgxRepository) CreateCard(ctx context.Context) error {
+// 	card, err := NewCard()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to create card struct: %w", err)
+// 	}
+
+// 	query := `
+// 	INSERT INTO cards(id, title, content)
+// 	VALUES (@id, @title, @content)
+// 	`
+// 	args := pgx.NamedArgs{
+// 		"id":      card.ID,
+// 		"title":   card.Title,
+// 		"content": card.Content,
+// 	}
+// 	_, err = r.p.Exec(ctx, query, args)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to insert record to database: %w", err)
+// 	}
+
+// 	return nil
+// }
+
+// func (r *pgxRepository) DeleteCard(ctx context.Context, id uuid.UUID) error {
+// 	query := `
+// 	DELETE FROM cards
+// 	WHERE id = @id
+// 	`
+// 	args := pgx.NamedArgs{
+// 		"id": id,
+// 	}
+// 	_, err := r.p.Exec(ctx, query, args)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to delete record from database: %w", err)
+// 	}
+
+// 	return nil
+// }
+
+// func (r *pgxRepository) PatchCard(ctx context.Context, id uuid.UUID, i *CardPatch) error {
+// 	args := pgx.NamedArgs{
+// 		"id":      id,
+// 		"title":   *i.Title,
+// 		"content": *i.Content,
+// 	}
+// 	query := `
+// 	UPDATE cards
+// 	SET
+// 		title = COALESCE(@title, title),
+// 		content = COALESCE(@content, content)
+// 	WHERE id = @id
+// 	`
+// 	_, err := r.p.Exec(ctx, query, args)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update record in database: %w", err)
+// 	}
+
+// 	return nil
+// }

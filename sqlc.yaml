@@ -1,0 +1,23 @@
+version: "2"
+overrides:
+  go:
+    overrides:
+      - db_type: uuid
+        go_type:
+          import: github.com/google/uuid
+          type: UUID
+      - db_type: timestamptz
+        go_type:
+          import: time
+          type: Time
+sql:
+  - name: kanban
+    engine: postgresql
+    schema: db/schemas/kanban.sql
+    queries: db/queries/kanban.sql
+    gen:
+      go:
+        package: db
+        out: internal/kanban/db
+        sql_package: pgx/v5
+        emit_interface: true

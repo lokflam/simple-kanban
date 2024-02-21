@@ -1,0 +1,192 @@
+package view
+
+import (
+	"fmt"
+	"github.com/lokflam/simple-kanban/internal/layout"
+	"github.com/google/uuid"
+)
+
+templ Page(board templ.Component) {
+	@layout.Page() {
+		@CardFormDialog(CardFormViewModel{})
+		@NewCardButton()
+		@board
+	}
+}
+
+templ CardFormDialog(c CardFormViewModel) {
+	<dialog
+		id="card-form-dialog"
+		x-data={ fmt.Sprintf("{ open: %t }", c.Open) }
+		x-bind:open="open"
+		x-on:click.self="open = false"
+		x-on:action-complete="open = false"
+	>
+		<form>
+			<article>
+				<header>
+					if c.Card.ID == uuid.Nil {
+						<strong>New Card</strong>
+					} else {
+						<strong>Edit Card</strong>
+					}
+				</header>
+				<fieldset>
+					<input type="hidden" name="id" value={ c.Card.ID.String() }/>
+					@CardFormTitleField(c)
+					@CardFormContentField(c)
+				</fieldset>
+				<footer>
+					<button
+						type="button"
+						name="delete"
+						disabled?={ c.Card.ID == uuid.Nil }
+						hx-delete={ fmt.Sprintf("/cards/%s", c.Card.ID) }
+						hx-swap="none"
+						x-on:htmx:after-request="$event.detail.successful && $dispatch('action-complete')"
+					>
+						Delete
+					</button>
+					<button
+						type="button"
+						name="close"
+						x-on:click="$dispatch('action-complete')"
+					>
+						Close
+					</button>
+					<button
+						id="card-save"
+						type="submit"
+						name="save"
+						hx-put="/cards"
+						hx-swap="outerHTML"
+						hx-target-4*="#card-form-dialog"
+						x-on:htmx:after-request="$event.detail.successful && $dispatch('action-complete')"
+					>
+						Save
+					</button>
+				</footer>
+			</article>
+		</form>
+	</dialog>
+}
+
+templ CardFormTitleField(c CardFormViewModel) {
+	<div id="card-title-field">
+		<label for="card-title">Title</label>
+		<input
+			id="card-title"
+			name="title"
+			type="text"
+			placeholder="Enter title"
+			value={ c.Card.Title }
+			aria-describedby="card-title-error"
+			if _, ok := c.FieldErrors["Title"]; ok {
+				aria-invalid="true"
+			}
+			hx-put="/cards?dry_run=true"
+			hx-trigger="blur"
+			hx-target="#card-title-field"
+			hx-target-4*="#card-title-field"
+			hx-swap="outerHTML"
+			hx-sync="#card-save:abort"
+		/>
+		<small id="card-title-error">
+			if _, ok := c.FieldErrors["Title"]; ok {
+				{ c.FieldErrors["Title"][0].Error() }
+			}
+		</small>
+	</div>
+}
+
+templ CardFormContentField(c CardFormViewModel) {
+	<div id="card-content-field">
+		<label for="card-content">Content</label>
+		<textarea
+			id="card-content"
+			name="content"
+			placeholder="Enter content"
+			rows="4"
+			aria-describedby="card-content-error"
+			if _, ok := c.FieldErrors["Content"]; ok {
+				aria-invalid="true"
+			}
+			hx-put="/cards?dry_run=true"
+			hx-trigger="blur"
+			hx-target="#card-content-field"
+			hx-target-4*="#card-content-field"
+			hx-swap="outerHTML"
+			hx-sync="#card-save:abort"
+		>
+			{ c.Card.Content }
+		</textarea>
+		<small id="card-content-error">
+			if _, ok := c.FieldErrors["Content"]; ok {
+				{ c.FieldErrors["Content"][0].Error() }
+			}
+		</small>
+	</div>
+}
+
+templ NewCardButton() {
+	<button
+		name="new-card"
+		type="button"
+		hx-get="/card-form"
+		hx-target="#card-form-dialog"
+		hx-swap="outerHTML"
+	>
+		New Card
+	</button>
+}
+
+templ Board(cards map[string][]CardViewModel, lazy bool) {
+	<div
+		id="board"
+		hx-get="/"
+		hx-target="#board"
+		hx-swap="outerHTML"
+		if ! lazy {
+			hx-trigger="card-update from:*"
+		} else {
+			hx-trigger="load"
+		}
+	>
+		if ! lazy {
+			@BoardColumn(cards["todo"], "todo")
+		}
+	</div>
+}
+
+templ BoardColumn(cards []CardViewModel, column string) {
+	<div id={ fmt.Sprintf("%s-column", column) }>
+		<header>
+			<strong>{ column }</strong>
+		</header>
+		<div>
+			for _, c := range cards {
+				@CardItem(c)
+			}
+		</div>
+	</div>
+}
+
+templ CardItem(c CardViewModel) {
+	<article>
+		<header>
+			<strong>{ c.Title }</strong>
+		</header>
+		<p>{ c.Content }</p>
+		<div x-data={ fmt.Sprintf("{ open: false, id: %q }", c.ID) }>
+			<button
+				name="edit-card"
+				type="button"
+				hx-get={ fmt.Sprintf("/card-form/%s", c.ID) }
+				hx-target="#card-form-dialog"
+				hx-swap="outerHTML"
+			>
+				Edit
+			</button>
+		</div>
+	</article>
+}

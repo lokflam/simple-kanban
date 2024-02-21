@@ -1,0 +1,120 @@
+// package kanban
+
+// import "fmt"
+// import "github.com/lokflam/simple-kanban/internal/layout"
+
+// templ BoardComponent(cards []*CardViewModel) {
+// 	@layout.Page() {
+// 		@CardListComponent(cards)
+// 	}
+// }
+
+// templ CardListComponent(cards []*CardViewModel) {
+// 	<section id="todos" class="relative">
+// 		// <div id="items-loading" class="htmx-indicator absolute top-0 left-0 w-full h-full z-30 rounded-lg bg-slate-600 hidden [&.htmx-request.htmx-indicator]:block [&.htmx-request.htmx-indicator]:opacity-30"></div>
+// 		<div class="p-2 pb-4 flex justify-center">
+// 			<button
+// 				id="add-item"
+// 				type="submit"
+// 				class="material-symbols-rounded p-1 text-5xl leading-none rounded-full hover:bg-slate-200 active:bg-slate-400"
+// 			>
+// 				add
+// 			</button>
+// 		</div>
+// 		<ol class="p-2 flex flex-col gap-2">
+// 			for _, c := range cards {
+// 				@CardComponent(c)
+// 			}
+// 		</ol>
+// 	</section>
+// }
+
+// templ CardComponent(c *CardViewModel) {
+// 	<li
+// 		if c.IsEditable {
+// 			hx-trigger="htmx:afterRequest from:find [name='done_edit']"
+// 		} else {
+// 			hx-trigger="htmx:afterRequest from:find [name='is_done']"
+// 		}
+// 		hx-get={ fmt.Sprintf("/todos/%s", c.ID) }
+// 		hx-swap="outerHTML"
+// 		class="group flex gap-4 content-center items-center p-5 border-2 rounded-lg has-[:checked]:bg-slate-100"
+// 	>
+// 		<input type="hidden" name="id" value={ c.ID }/>
+// 		<input
+// 			type="checkbox"
+// 			name="is_done"
+// 			value="true"
+// 			id={ fmt.Sprintf("item-is-done-%s", c.ID) }
+// 			class="scale-150"
+// 			if ! c.IsEditable {
+// 				hx-patch={ fmt.Sprintf("/todos/%s", c.ID) }
+// 				hx-swap="none"
+// 				hx-disabled-elt="this"
+// 			}
+// 		/>
+// 		<label
+// 			for={ fmt.Sprintf("item-is-done-%s", c.ID) }
+// 			hidden?={ c.IsEditable }
+// 			class="grow text-wrap truncate group-has-[:checked]:line-through"
+// 		>
+// 			{ c.Content }
+// 		</label>
+// 		if c.IsEditable {
+// 			<textarea
+// 				id={ fmt.Sprintf("item-content-%s", c.ID) }
+// 				name="content"
+// 				rows="4"
+// 				class="border-2 rounded-lg w-full"
+// 			>
+// 				{ c.Content }
+// 			</textarea>
+// 		}
+// 		<div class="flex flex-col gap-2">
+// 			if c.IsEditable {
+// 				<button
+// 					type="button"
+// 					name="undo"
+// 					class="material-symbols-rounded p-1 text-2xl leading-none rounded-full hover:bg-slate-200 active:bg-slate-400"
+// 					hx-get={ fmt.Sprintf("/todos/%s", c.ID) }
+// 					hx-target="closest li"
+// 					hx-swap="outerHTML"
+// 				>
+// 					undo
+// 				</button>
+// 				<button
+// 					type="button"
+// 					name="done_edit"
+// 					hx-patch={ fmt.Sprintf("/todos/%s", c.ID) }
+// 					hx-swap="none"
+// 					hx-include={ fmt.Sprintf("#item-content-%s,#item-is-done-%s", c.ID, c.ID) }
+// 					class="material-symbols-rounded p-1 text-2xl leading-none rounded-full hover:bg-slate-200 active:bg-slate-400"
+// 				>
+// 					done
+// 				</button>
+// 			} else {
+// 				<button
+// 					type="button"
+// 					name="delete"
+// 					hx-delete={ fmt.Sprintf("/todos/%s", c.ID) }
+// 					hx-confirm="Delete item?"
+// 					hx-target="closest li"
+// 					hx-swap="delete"
+// 					class="material-symbols-rounded p-1 text-2xl leading-none rounded-full hover:bg-slate-200 active:bg-slate-400"
+// 				>
+// 					delete
+// 				</button>
+// 				<button
+// 					type="button"
+// 					name="edit"
+// 					hx-get={ fmt.Sprintf("/todos/%s:edit", c.ID) }
+// 					hx-target="closest li"
+// 					hx-swap="outerHTML"
+// 					class="material-symbols-rounded p-1 text-2xl leading-none rounded-full hover:bg-slate-200 active:bg-slate-400"
+// 				>
+// 					edit
+// 				</button>
+// 			}
+// 		</div>
+// 	</li>
+// }
