@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.25.0
 
-package db
+package postgresql
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 )
 
 type Querier interface {
-	Card(ctx context.Context, id uuid.UUID) (Card, error)
-	CardsByStatus(ctx context.Context, statusID uuid.UUID) ([]Card, error)
+	Card(ctx context.Context, id uuid.UUID) (CardRow, error)
+	CardsByStatus(ctx context.Context, id uuid.UUID) ([]CardsByStatusRow, error)
 	DeleteCard(ctx context.Context, id uuid.UUID) error
-	Statuses(ctx context.Context) ([]StatusesRow, error)
+	Statuses(ctx context.Context) ([]Status, error)
 	UpsertCard(ctx context.Context, arg UpsertCardParams) error
 }
 

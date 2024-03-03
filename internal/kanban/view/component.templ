@@ -3,7 +3,6 @@ package view
 import (
 	"fmt"
 	"github.com/lokflam/simple-kanban/internal/layout"
-	"github.com/google/uuid"
 )
 
 templ Page(board templ.Component) {
@@ -25,22 +24,23 @@ templ CardFormDialog(c CardFormViewModel) {
 		<form>
 			<article>
 				<header>
-					if c.Card.ID == uuid.Nil {
+					if c.Card.ID == "" {
 						<strong>New Card</strong>
 					} else {
 						<strong>Edit Card</strong>
 					}
 				</header>
 				<fieldset>
-					<input type="hidden" name="id" value={ c.Card.ID.String() }/>
+					<input type="hidden" name="id" value={ c.Card.ID }/>
 					@CardFormTitleField(c)
 					@CardFormContentField(c)
+					@CardFormStatusField(c)
 				</fieldset>
 				<footer>
 					<button
 						type="button"
 						name="delete"
-						disabled?={ c.Card.ID == uuid.Nil }
+						disabled?={ c.Card.ID == "" }
 						hx-delete={ fmt.Sprintf("/cards/%s", c.Card.ID) }
 						hx-swap="none"
 						x-on:htmx:after-request="$event.detail.successful && $dispatch('action-complete')"
@@ -128,6 +128,41 @@ templ CardFormContentField(c CardFormViewModel) {
 	</div>
 }
 
+templ CardFormStatusField(c CardFormViewModel) {
+	<div id="card-status-id-field">
+		<label for="card-status-id">Status</label>
+		<select
+			id="card-status-id"
+			name="status_id"
+			aria-describedby="card-status-id-error"
+			if _, ok := c.FieldErrors["Status"]; ok {
+				aria-invalid="true"
+			}
+			hx-put="/cards?dry_run=true"
+			hx-trigger="change"
+			hx-select="#card-status-id-field"
+			hx-target="#card-status-id-field"
+			hx-target-4*="#card-status-id-field"
+			hx-swap="outerHTML"
+			hx-sync="#card-save:abort"
+		>
+			for _, s := range c.Statuses {
+				<option
+					value={ s.ID }
+					selected?={ s.ID == c.Card.StatusID }
+				>
+					{ s.Name }
+				</option>
+			}
+		</select>
+		<small id="card-status-id-error">
+			if _, ok := c.FieldErrors["Status"]; ok {
+				{ c.FieldErrors["Status"][0].Error() }
+			}
+		</small>
+	</div>
+}
+
 templ NewCardButton() {
 	<button
 		name="new-card"
@@ -140,7 +175,7 @@ templ NewCardButton() {
 	</button>
 }
 
-templ Board(cards map[string][]CardViewModel, lazy bool) {
+templ Board(board BoardViewModel, lazy bool) {
 	<div
 		id="board"
 		hx-get="/"
@@ -153,18 +188,20 @@ templ Board(cards map[string][]CardViewModel, lazy bool) {
 		}
 	>
 		if ! lazy {
-			@BoardColumn(cards["todo"], "todo")
+			for s, cl := range board {
+				@BoardColumn(cl, s)
+			}
 		}
 	</div>
 }
 
-templ BoardColumn(cards []CardViewModel, column string) {
-	<div id={ fmt.Sprintf("%s-column", column) }>
+templ BoardColumn(cl []CardViewModel, s StatusViewModel) {
+	<div>
 		<header>
-			<strong>{ column }</strong>
+			<strong>{ s.Name }</strong>
 		</header>
 		<div>
-			for _, c := range cards {
+			for _, c := range cl {
 				@CardItem(c)
 			}
 		</div>

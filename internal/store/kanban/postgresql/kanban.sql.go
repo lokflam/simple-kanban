@@ -3,7 +3,7 @@
 //   sqlc v1.25.0
 // source: kanban.sql
 
-package db
+package postgresql
 
 import (
 	"context"
@@ -13,48 +13,68 @@ import (
 )
 
 const card = `-- name: Card :one
-SELECT id, title, content, status_id, created_at, updated_at
+SELECT card.id, card.title, card.content, card.status_id, card.created_at, card.updated_at, status.id, status.name, status.created_at, status.updated_at
 FROM card
-WHERE id = $1
+JOIN status ON card.status_id = status.id
+WHERE card.id = $1
 `
 
-func (q *Queries) Card(ctx context.Context, id uuid.UUID) (Card, error) {
+type CardRow struct {
+	Card   Card
+	Status Status
+}
+
+func (q *Queries) Card(ctx context.Context, id uuid.UUID) (CardRow, error) {
 	row := q.db.QueryRow(ctx, card, id)
-	var i Card
+	var i CardRow
 	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Content,
-		&i.StatusID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.Card.ID,
+		&i.Card.Title,
+		&i.Card.Content,
+		&i.Card.StatusID,
+		&i.Card.CreatedAt,
+		&i.Card.UpdatedAt,
+		&i.Status.ID,
+		&i.Status.Name,
+		&i.Status.CreatedAt,
+		&i.Status.UpdatedAt,
 	)
 	return i, err
 }
 
 const cardsByStatus = `-- name: CardsByStatus :many
-SELECT id, title, content, status_id, created_at, updated_at
+SELECT card.id, card.title, card.content, card.status_id, card.created_at, card.updated_at, status.id, status.name, status.created_at, status.updated_at
 FROM card
-WHERE status_id = $1
-ORDER BY created_at DESC
+JOIN status ON card.status_id = status.id
+WHERE status.id = $1
+ORDER BY card.created_at DESC
 `
 
-func (q *Queries) CardsByStatus(ctx context.Context, statusID uuid.UUID) ([]Card, error) {
-	rows, err := q.db.Query(ctx, cardsByStatus, statusID)
+type CardsByStatusRow struct {
+	Card   Card
+	Status Status
+}
+
+func (q *Queries) CardsByStatus(ctx context.Context, id uuid.UUID) ([]CardsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, cardsByStatus, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Card
+	var items []CardsByStatusRow
 	for rows.Next() {
-		var i Card
+		var i CardsByStatusRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Content,
-			&i.StatusID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.Card.ID,
+			&i.Card.Title,
+			&i.Card.Content,
+			&i.Card.StatusID,
+			&i.Card.CreatedAt,
+			&i.Card.UpdatedAt,
+			&i.Status.ID,
+			&i.Status.Name,
+			&i.Status.CreatedAt,
+			&i.Status.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -77,36 +97,26 @@ func (q *Queries) DeleteCard(ctx context.Context, id uuid.UUID) error {
 }
 
 const statuses = `-- name: Statuses :many
-SELECT status.id, status.name, status.created_at, status.updated_at, board_status.id, board_status.status_id, board_status.position, board_status.created_at, board_status.updated_at
+SELECT status.id, status.name, status.created_at, status.updated_at
 FROM status
 LEFT JOIN board_status ON status.id = board_status.status_id
 ORDER BY board_status.position
 `
 
-type StatusesRow struct {
-	Status      Status
-	BoardStatus BoardStatus
-}
-
-func (q *Queries) Statuses(ctx context.Context) ([]StatusesRow, error) {
+func (q *Queries) Statuses(ctx context.Context) ([]Status, error) {
 	rows, err := q.db.Query(ctx, statuses)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []StatusesRow
+	var items []Status
 	for rows.Next() {
-		var i StatusesRow
+		var i Status
 		if err := rows.Scan(
-			&i.Status.ID,
-			&i.Status.Name,
-			&i.Status.CreatedAt,
-			&i.Status.UpdatedAt,
-			&i.BoardStatus.ID,
-			&i.BoardStatus.StatusID,
-			&i.BoardStatus.Position,
-			&i.BoardStatus.CreatedAt,
-			&i.BoardStatus.UpdatedAt,
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

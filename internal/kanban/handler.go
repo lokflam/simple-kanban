@@ -42,28 +42,43 @@ func BoardHandler(q db.Querier) http.HandlerFunc {
 			return
 		}
 
-		cards, err := q.ListCards(r.Context())
+		statuses, err := q.Statuses(r.Context())
 		if err != nil {
 			RenderError(w, (&ErrQueryFailed{err}))
 			return
 		}
 
-		cardVMs := map[string][]view.CardViewModel{}
-		for _, v := range cards {
-			cardVMs["todo"] = append(cardVMs["todo"], CardViewModelFromCard(v))
-		}
+		boardVM := view.BoardViewModel{}
+		for _, s := range statuses {
+			statusVM := view.StatusViewModel{
+				ID:   s.Status.ID.String(),
+				Name: s.Status.Name,
+			}
 
-		board := view.Board(cardVMs, false)
+			boardVM[statusVM] = []view.CardViewModel{}
 
-		if hxTarget == "board" {
-			if err := board.Render(r.Context(), w); err != nil {
-				RenderError(w, (&ErrRenderFailed{err}))
+			cards, err := q.CardsByStatus(r.Context(), s.Status.ID)
+			if err != nil {
+				RenderError(w, (&ErrQueryFailed{err}))
 				return
 			}
-			return
+
+			for _, c := range cards {
+				boardVM[statusVM] = append(boardVM[statusVM], CardViewModelFromCard(c))
+			}
 		}
 
-		component := view.Page(board)
+		board := view.Board(boardVM, false)
+
+		var component templ.Component
+
+		switch hxTarget {
+		case "board":
+			component = board
+		default:
+			component = view.Page(board)
+		}
+
 		if err := component.Render(r.Context(), w); err != nil {
 			RenderError(w, (&ErrRenderFailed{err}))
 			return
@@ -83,16 +98,23 @@ func CardFormHandler(q db.Querier) http.HandlerFunc {
 				return
 			}
 
-			card, err = q.GetCard(r.Context(), id)
+			card, err = q.Card(r.Context(), id)
 			if err != nil {
 				RenderError(w, (&ErrQueryFailed{err}))
 				return
 			}
 		}
 
+		statuses, err := q.Statuses(r.Context())
+		if err != nil {
+			RenderError(w, (&ErrQueryFailed{err}))
+			return
+		}
+
 		component := view.CardFormDialog(view.CardFormViewModel{
-			Open: true,
-			Card: CardViewModelFromCard(card),
+			Open:     true,
+			Card:     CardViewModelFromCard(card),
+			Statuses: StatusViewModelsFromListStatusesRows(statuses),
 		})
 		if err := component.Render(r.Context(), w); err != nil {
 			RenderError(w, (&ErrRenderFailed{err}))
@@ -114,13 +136,21 @@ func UpsertCardHandler(q db.Querier) http.HandlerFunc {
 
 		vErr := cardFields.Validate()
 		if vErr != nil || dryRun {
+			statuses, err := q.Statuses(r.Context())
+			if err != nil {
+				RenderError(w, (&ErrQueryFailed{err}))
+				return
+			}
+
 			vm := view.CardFormViewModel{
 				Open: true,
 				Card: view.CardViewModel{
-					ID:      cardFields.ID,
-					Title:   cardFields.Title,
-					Content: cardFields.Content,
+					ID:       cardFields.ID.String(),
+					StatusID: cardFields.StatusID.String(),
+					Title:    cardFields.Title,
+					Content:  cardFields.Content,
 				},
+				Statuses: StatusViewModelsFromListStatusesRows(statuses),
 			}
 
 			if vErr != nil {
@@ -172,6 +202,7 @@ func UpsertCardHandler(q db.Querier) http.HandlerFunc {
 			ID:        id,
 			Title:     cardFields.Title,
 			Content:   cardFields.Content,
+			StatusID:  cardFields.StatusID,
 			CreatedAt: ts,
 			UpdatedAt: ts,
 		})

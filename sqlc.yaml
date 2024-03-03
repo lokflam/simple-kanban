@@ -17,7 +17,7 @@ sql:
     queries: db/queries/kanban.sql
     gen:
       go:
-        package: db
-        out: internal/kanban/db
+        package: postgresql
+        out: internal/store/kanban/postgresql
         sql_package: pgx/v5
         emit_interface: true

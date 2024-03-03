@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lokflam/simple-kanban/internal/health"
 	"github.com/lokflam/simple-kanban/internal/kanban"
 )
 
@@ -42,7 +41,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(httplog.RequestLogger(requestLogger))
 	r.Use(middleware.Timeout(Timeout))
-	r.Get("/health", health.Handler())
+	r.Get("/health", HealthHandler())
 	r.Mount("/", kanban.Router(dbpool))
 
 	// start server
@@ -74,4 +73,11 @@ func main() {
 		panic(fmt.Errorf("failed to graceful shutdown server: %w", err))
 	}
 	requestLogger.Logger.Info("server closed.")
+}
+
+func HealthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
 }
